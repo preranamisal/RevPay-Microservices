@@ -1,0 +1,184 @@
+version: '3.8'
+
+services:
+  # ── MySQL Databases ──────────────────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: revpay-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: revpay@2024
+      MYSQL_DATABASE: revpay_users
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - revpay-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-prevpay@2024"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ── Eureka Server ────────────────────────────────────────────────────────────
+  eureka-server:
+    build: ./eureka-server
+    container_name: revpay-eureka
+    ports:
+      - "8761:8761"
+    networks:
+      - revpay-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  # ── API Gateway ──────────────────────────────────────────────────────────────
+  api-gateway:
+    build: ./api-gateway
+    container_name: revpay-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://admin:revpay@2024@eureka-server:8761/eureka/
+      JWT_SECRET: revpay-secret-key-for-jwt-token-generation-2024-secure
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - revpay-network
+
+  # ── User Service ─────────────────────────────────────────────────────────────
+  user-service:
+    build: ./user-service
+    container_name: revpay-user-service
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/revpay_users?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: revpay@2024
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://admin:revpay@2024@eureka-server:8761/eureka/
+      JWT_SECRET: revpay-secret-key-for-jwt-token-generation-2024-secure
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - revpay-network
+
+  # ── Wallet Service ───────────────────────────────────────────────────────────
+  wallet-service:
+    build: ./wallet-service
+    container_name: revpay-wallet-service
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/revpay_wallets?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: revpay@2024
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://admin:revpay@2024@eureka-server:8761/eureka/
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - revpay-network
+
+  # ── Transaction Service ──────────────────────────────────────────────────────
+  transaction-service:
+    build: ./transaction-service
+    container_name: revpay-transaction-service
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/revpay_transactions?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: revpay@2024
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://admin:revpay@2024@eureka-server:8761/eureka/
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - revpay-network
+
+  # ── Invoice Service ──────────────────────────────────────────────────────────
+  invoice-service:
+    build: ./invoice-service
+    container_name: revpay-invoice-service
+    ports:
+      - "8084:8084"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/revpay_invoices?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: revpay@2024
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://admin:revpay@2024@eureka-server:8761/eureka/
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - revpay-network
+
+  # ── Loan Service ─────────────────────────────────────────────────────────────
+  loan-service:
+    build: ./loan-service
+    container_name: revpay-loan-service
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/revpay_loans?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: revpay@2024
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://admin:revpay@2024@eureka-server:8761/eureka/
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - revpay-network
+
+  # ── Notification Service ──────────────────────────────────────────────────────
+  notification-service:
+    build: ./notification-service
+    container_name: revpay-notification-service
+    ports:
+      - "8086:8086"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/revpay_notifications?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: revpay@2024
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://admin:revpay@2024@eureka-server:8761/eureka/
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - revpay-network
+
+  # ── Angular Frontend ──────────────────────────────────────────────────────────
+  revpay-frontend:
+    build: ./revpay-frontend
+    container_name: revpay-frontend
+    ports:
+      - "4200:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - revpay-network
+
+networks:
+  revpay-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
